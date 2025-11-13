@@ -38,7 +38,7 @@ char ssid[32]           = "";
 char password[32]       = "";
 char mqtt_server[40]    = "";
 int  mqtt_port          = 1883;
-char amplifier_name[32] = "AMP-01";   // renamed from station_name
+char amplifier_name[32] = "Sergei";   // renamed from station_name
 int  block_ptt_seconds  = 15;         // configurable "Block PTT for" (seconds)
 
 char macAddress[18]     = "";
