@@ -47,7 +47,7 @@ char topic_debug[128]   = "";
 
 // Debug control
 bool debugEnabled            = true;
-unsigned long debugDeadline  = 60000;   // 60s after boot
+unsigned long debugDeadline  = 3600000;   // 1 hour after boot
 
 // -------------------------------------------------------------------
 //  Amplifier hardware / logic
@@ -63,27 +63,25 @@ uint8_t bandOld = 0xFF;
 // --- PIN DEFINITIONS -----------------------------------------------
 // Adjust these to match your hardware wiring on the WiFi-capable board.
 
-// PTT pins
+// PTT pins (match original Sergej hardware)
 const int pttInp      = 7;   // PTT IN  (active LOW)
 const int pttOut      = 6;   // PTT OUT (active HIGH)
-const int uglasevanje = A0;  // optional tuning input, can be reused
+const int uglasevanje = A5;  // optional tuning input on analog 5
 
-// 4 band input pins (form 4-bit code)
-// These replace the old A0..A3 + PINC method.
-// Map them to your actual 4-band-code lines.
+// 4 band input pins (originally A0..A3 feeding PINC)
 const int bandInPins[4] = {
-  2,  // bit0
-  3,  // bit1
-  4,  // bit2
-  5   // bit3
+  A0,  // bit0
+  A1,  // bit1
+  A2,  // bit2
+  A3   // bit3
 };
 
-// 4 band output pins (replace old PORTD bits 2..5)
+// 4 band output pins (original PORTD bits 2..5)
 const int bandOutPins[4] = {
-  8,   // OUT0 (was D2)
-  9,   // OUT1 (was D3)
-  10,  // OUT2 (was D4)
-  11   // OUT3 (was D5)
+  2,  // OUT0 (D2)
+  3,  // OUT1 (D3)
+  4,  // OUT2 (D4)
+  5   // OUT3 (D5)
 };
 
 // PTT block timing (after band change)
@@ -557,7 +555,7 @@ void setup() {
   Serial.println(F("Booting amplifier controller..."));
   Serial.println(VER);
   debugDeadline += millis();
-  Serial.println(F("Debug enabled for 1 minute after boot"));
+  Serial.println(F("Debug enabled for 1 hour after boot"));
 
   // Load config
   loadConfigFromEEPROM();
@@ -604,11 +602,11 @@ void loop() {
   // Handle amplifier logic
   handleAmplifierLogic();
 
-  // Auto-disable debug after first minute
+  // Auto-disable debug after first hour
   if (debugEnabled && debugDeadline && millis() >= debugDeadline) {
     debugEnabled  = false;
     debugDeadline = 0;
-    Serial.println(F("Debug messages DISABLED (1-minute timeout)"));
+    Serial.println(F("Debug messages DISABLED (1-hour timeout)"));
   }
 
   // Web + MQTT
