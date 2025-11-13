@@ -1,4 +1,4 @@
-// Vasilij & Sergej remote control - S53M Team
+// Vasilij & Sergej remote control - S53M Team _ old version
 
 const byte Mask = 15;
 uint8_t band;
