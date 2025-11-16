@@ -91,6 +91,7 @@ unsigned long bandBlockTimeMs    = 15000UL;  // updated from block_ptt_seconds
 // PTT state
 bool pttState          = false;  // false=RX, true=TX
 bool pttBlockReported  = false;  // to avoid spamming logs
+bool pttInputActive    = false;  // reflects most recent PTT IN reading
 
 // -------------------------------------------------------------------
 //  Debug helpers
@@ -497,7 +498,8 @@ void handleAmplifierLogic() {
   bool pttAllowed   = !blockActive;
 
   // --- handle PTT state -------------------------------------------
-  bool pttPressed = (in_ptt == LOW);   // active LOW
+  pttInputActive = (in_ptt == LOW);   // active LOW
+  bool pttPressed = pttInputActive;
   bool prevPtt    = pttState;
 
   if (pttPressed) {
@@ -544,6 +546,32 @@ void handleAmplifierLogic() {
   if (in_ugl == LOW) {
     publishDebugMessage("[INFO] Uglasevanje input LOW (active)");
   }
+}
+
+// Run non-critical services when timing allows
+void handleBackgroundTasks() {
+  if (debugEnabled && debugDeadline && millis() >= debugDeadline) {
+    debugEnabled  = false;
+    debugDeadline = 0;
+    Serial.println(F("Debug messages DISABLED (1-hour timeout)"));
+  }
+
+  server.handleClient();
+  client.loop();
+
+  static unsigned long lastMQTTCheck = 0;
+  unsigned long now = millis();
+
+  if (WiFi.status() != WL_CONNECTED && WiFi.getMode() != WIFI_AP) {
+    publishDebugMessage("WiFi disconnected.");
+  }
+
+  if (!client.connected() && (now - lastMQTTCheck > 5000)) {
+    lastMQTTCheck = now;
+    reconnectMQTT();
+  }
+
+  delay(2);  // small relief for network stack
 }
 
 // -------------------------------------------------------------------
@@ -602,30 +630,11 @@ void loop() {
   // Handle amplifier logic
   handleAmplifierLogic();
 
-  // Auto-disable debug after first hour
-  if (debugEnabled && debugDeadline && millis() >= debugDeadline) {
-    debugEnabled  = false;
-    debugDeadline = 0;
-    Serial.println(F("Debug messages DISABLED (1-hour timeout)"));
+  // Keep PTT processing at the front of the queue
+  if (pttInputActive || pttState) {
+    yield();  // feed watchdog but immediately service PTT again
+    return;
   }
 
-  // Web + MQTT
-  server.handleClient();
-  client.loop();
-
-  // WiFi / MQTT health & reconnect
-  static unsigned long lastMQTTCheck = 0;
-  unsigned long now = millis();
-
-  if (WiFi.status() != WL_CONNECTED && WiFi.getMode() != WIFI_AP) {
-    // lost STA, but not already in AP
-    publishDebugMessage("WiFi disconnected.");
-  }
-
-  if (!client.connected() && (now - lastMQTTCheck > 5000)) {
-    lastMQTTCheck = now;
-    reconnectMQTT();
-  }
-
-  delay(5);  // small relief
+  handleBackgroundTasks();
 }
